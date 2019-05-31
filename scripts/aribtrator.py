@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #  Copyright (c) 2019 Connor Yates, Scott Chow, Christopher Bollinger, Christopher Eriksen
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,17 +24,19 @@ from std_msgs.msg import String
 from std_msgs.msg import Time
 
 
-class Arbitrator(object):
+class Arbitrator:
     def __init__(self):
-        self.comm_pub = rospy.Publisher("time_coord", Time)
+        self.comm_pub = rospy.Publisher("time_coord", Time, queue_size=10)
         rospy.Subscriber("accept_feedback", String, self.feedback_log)
         self.state = None
         self.other_accept = False
         self.received = False
+        self.other_in_pos = False
 
     def feedback_log(self, msg):
+        rospy.logdebug("Arbitrator received {}".format(msg.data))
         if msg.data == "In Position":
-            self.run()
+            self.other_in_pos = True
         if msg.data == "Accept":
             self.other_accept = True
             self.received = True
@@ -41,20 +44,31 @@ class Arbitrator(object):
             self.received = True
 
     def run(self):
-        rate = rospy.Rate(0.1)
-        while True:
-            future_time = rospy.get_time() + 5
-            self.comm_pub.publish(Time(future_time))
-            while not self.received:
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            self.other_in_pos = False
+            while not self.other_in_pos:
                 rate.sleep()
-            if self.other_accept:
-                break
-            else:
-                self.received = False
-        # RUN THE MANEUVER NOW
+            while True:
+                future_time = int(rospy.get_time() + 10)
+                msg = Time()
+                msg.data.secs = future_time
+                self.comm_pub.publish(msg)
+                while not self.received:
+                    rate.sleep()
+                if self.other_accept:
+                    break
+                else:
+                    self.received = False
+            # RUN THE MANEUVER NOW
+            rospy.logdebug("Sleeping {}".format(future_time - rospy.get_time()))
+            rospy.logdebug("Future time should be: {}".format(future_time))
+            rospy.sleep(future_time - rospy.get_time())
+            rospy.logdebug("Current time is: {}".format(rospy.get_time()))
+            rospy.loginfo("Executing maneuver")
 
 
 if __name__ == '__main__':
     rospy.init_node("arbitrator")
     arbitrator = Arbitrator()
-    rospy.spin()
+    arbitrator.run()

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #  Copyright (c) 2019 Connor Yates, Scott Chow, Christopher Bollinger, Christopher Eriksen
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,15 +24,22 @@ from std_msgs.msg import String
 from std_msgs.msg import Time
 
 
-class Agreer(object):
+class Agreer:
     def __init__(self):
         rospy.Subscriber("time_coord", Time, self.check_time)
-        self.comm_pub = rospy.Publisher("accept_feedback", String)
-        self.comm_pub.publish("In Position")  # One-off for this first test
+        self.comm_pub = rospy.Publisher("accept_feedback", String, queue_size=10)
 
     def check_time(self, msg):
-        if rospy.Time(3) < msg.data < rospy.Time(6):
+        rospy.logdebug("Time received")
+        print msg.data.secs
+        if rospy.get_time()+6 < msg.data.secs < rospy.get_time()+12:
             self.comm_pub.publish("Accept")
+            rospy.logdebug("Sleeping {}".format(msg.data.secs - rospy.get_time()))
+
+            rospy.logdebug("Future time should be: {}".format(msg.data.secs))
+            rospy.sleep(msg.data.secs - rospy.get_time())
+            rospy.logdebug("Current time is: {}".format(rospy.get_time()))
+            rospy.loginfo("Executing maneuver")
         else:
             self.comm_pub.publish("Reject")
 
@@ -39,4 +47,6 @@ class Agreer(object):
 if __name__ == '__main__':
     rospy.init_node("agreer")
     agreer = Agreer()
+    rospy.sleep(1)
+    agreer.comm_pub.publish("In Position")  # One-off for this first test
     rospy.spin()
