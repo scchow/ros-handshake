@@ -20,12 +20,12 @@
 #  SOFTWARE.
 
 import rospy
-from std_msgs.msg import String, Bool, Time
+from std_msgs.msg import String, Bool, Header
 
 
 class Arbitrator:
     def __init__(self):
-        self.comm_pub = rospy.Publisher("time_coord", Time, queue_size=10)
+        self.comm_pub = rospy.Publisher("time_coord", Header, queue_size=10)
         rospy.Subscriber("accept_feedback", String, self.feedback_log)
         rospy.Subscriber("switch_found", Bool, self.self_ready_cb)
         self.reset()
@@ -53,8 +53,8 @@ class Arbitrator:
         rospy.logdebug('Negotiating action time...')
         while not rospy.is_shutdown():
             future_time = int(rospy.get_time() + 10)
-            msg = Time()
-            msg.data.secs = future_time
+            msg = Header()
+            msg.stamp.secs = future_time
             self.comm_pub.publish(msg)
             while not self.received:
                 rate.sleep()

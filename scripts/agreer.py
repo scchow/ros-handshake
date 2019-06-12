@@ -21,12 +21,12 @@
 
 import rospy
 from std_msgs.msg import String, Bool
-from std_msgs.msg import Time
+from std_msgs.msg import Header
 
 
 class Agreer:
     def __init__(self):
-        rospy.Subscriber("time_coord", Time, self.check_time)
+        rospy.Subscriber("time_coord", Header, self.check_time)
         rospy.Subscriber("switch_found", Bool, self.ready_cb)
         self.comm_pub = rospy.Publisher("accept_feedback", String, queue_size=10)
         self.ready = False
@@ -37,13 +37,13 @@ class Agreer:
 
     def check_time(self, msg):
         rospy.logdebug("Time received")
-        print msg.data.secs
-        if rospy.get_time() + 6 < msg.data.secs < rospy.get_time() + 12:
+        print msg.stamp.secs
+        if rospy.get_time() + 6 < msg.stamp.secs < rospy.get_time() + 12:
             self.comm_pub.publish("Accept")
-            rospy.logdebug("Sleeping {}".format(msg.data.secs - rospy.get_time()))
+            rospy.logdebug("Sleeping {}".format(msg.stamp.secs - rospy.get_time()))
 
-            rospy.logdebug("Future time should be: {}".format(msg.data.secs))
-            rospy.sleep(msg.data.secs - rospy.get_time())
+            rospy.logdebug("Future time should be: {}".format(msg.stamp.secs))
+            rospy.sleep(msg.stamp.secs - rospy.get_time())
             rospy.logdebug("Current time is: {}".format(rospy.get_time()))
             rospy.logwarn("Executing maneuver")
             self.ready = False
