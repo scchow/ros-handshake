@@ -54,12 +54,13 @@ class Agreer:
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             # don't start again until reset
-            while self.ready and not rospy.is_shutdown():
-                rate.sleep()
             while not self.ready and not rospy.is_shutdown():
                 rate.sleep()
 
             self.comm_pub.publish("In Position")
+
+            while self.ready and not rospy.is_shutdown():
+                rate.sleep()
 
 
 if __name__ == '__main__':
