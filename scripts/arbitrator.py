@@ -50,6 +50,7 @@ class Arbitrator:
                 break
             rate.sleep()
 
+        rospy.logdebug('Negotiating action time...')
         while not rospy.is_shutdown():
             future_time = int(rospy.get_time() + 10)
             msg = Time()
@@ -77,7 +78,7 @@ class Arbitrator:
 
 
 if __name__ == '__main__':
-    rospy.init_node("arbitrator")
+    rospy.init_node("arbitrator", log_level=rospy.DEBUG)
     arbitrator = Arbitrator()
     while not rospy.is_shutdown():
         arbitrator.run()

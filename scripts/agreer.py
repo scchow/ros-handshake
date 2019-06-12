@@ -63,6 +63,6 @@ class Agreer:
 
 
 if __name__ == '__main__':
-    rospy.init_node("agreer")
+    rospy.init_node("agreer", log_level=rospy.DEBUG)
     agreer = Agreer()
     agreer.run()
