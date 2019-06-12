@@ -28,11 +28,7 @@ class Arbitrator:
         self.comm_pub = rospy.Publisher("time_coord", Time, queue_size=10)
         rospy.Subscriber("accept_feedback", String, self.feedback_log)
         rospy.Subscriber("switch_found", Bool, self.self_ready_cb)
-        self.state = None
-        self.other_accept = False
-        self.received = False
-        self.other_in_pos = False
-        self.in_pos = False
+        self.reset()
 
     def self_ready_cb(self, msg):
         self.in_pos = msg.data
@@ -50,7 +46,7 @@ class Arbitrator:
     def run(self):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            if self.in_position and self.other_in_pos:
+            if self.in_pos and self.other_in_pos:
                 break
             rate.sleep()
 
@@ -73,8 +69,16 @@ class Arbitrator:
         rospy.logdebug("Current time is: {}".format(rospy.get_time()))
         rospy.logwarn("Executing maneuver")
 
+    def reset(self):
+        self.other_accept = False
+        self.received = False
+        self.other_in_pos = False
+        self.in_pos = False
+
 
 if __name__ == '__main__':
     rospy.init_node("arbitrator")
     arbitrator = Arbitrator()
-    arbitrator.run()
+    while not rospy.is_shutdown():
+        arbitrator.run()
+        arbitrator.reset()
