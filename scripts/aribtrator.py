@@ -20,21 +20,25 @@
 #  SOFTWARE.
 
 import rospy
-from std_msgs.msg import String
-from std_msgs.msg import Time
+from std_msgs.msg import String, Bool, Time
 
 
 class Arbitrator:
     def __init__(self):
         self.comm_pub = rospy.Publisher("time_coord", Time, queue_size=10)
         rospy.Subscriber("accept_feedback", String, self.feedback_log)
+        rospy.Subscriber("switch_found", Bool, self.self_ready_cb)
         self.state = None
         self.other_accept = False
         self.received = False
         self.other_in_pos = False
+        self.in_pos = False
+
+    def self_ready_cb(self, msg):
+        self.in_pos = msg.data
 
     def feedback_log(self, msg):
-        rospy.logdebug("Arbitrator received {}".format(msg.data))
+        rospy.loginfo("Arbitrator received {}".format(msg.data))
         if msg.data == "In Position":
             self.other_in_pos = True
         if msg.data == "Accept":
@@ -46,26 +50,28 @@ class Arbitrator:
     def run(self):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            self.other_in_pos = False
-            while not self.other_in_pos:
+            if self.in_position and self.other_in_pos:
+                break
+            rate.sleep()
+
+        while not rospy.is_shutdown():
+            future_time = int(rospy.get_time() + 10)
+            msg = Time()
+            msg.data.secs = future_time
+            self.comm_pub.publish(msg)
+            while not self.received:
                 rate.sleep()
-            while True:
-                future_time = int(rospy.get_time() + 10)
-                msg = Time()
-                msg.data.secs = future_time
-                self.comm_pub.publish(msg)
-                while not self.received:
-                    rate.sleep()
-                if self.other_accept:
-                    break
-                else:
-                    self.received = False
-            # RUN THE MANEUVER NOW
-            rospy.logdebug("Sleeping {}".format(future_time - rospy.get_time()))
-            rospy.logdebug("Future time should be: {}".format(future_time))
-            rospy.sleep(future_time - rospy.get_time())
-            rospy.logdebug("Current time is: {}".format(rospy.get_time()))
-            rospy.loginfo("Executing maneuver")
+            if self.other_accept:
+                break
+            else:
+                self.received = False
+
+        # RUN THE MANEUVER NOW
+        rospy.logdebug("Sleeping {}".format(future_time - rospy.get_time()))
+        rospy.logdebug("Future time should be: {}".format(future_time))
+        rospy.sleep(future_time - rospy.get_time())
+        rospy.logdebug("Current time is: {}".format(rospy.get_time()))
+        rospy.logwarn("Executing maneuver")
 
 
 if __name__ == '__main__':

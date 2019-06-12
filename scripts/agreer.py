@@ -20,33 +20,48 @@
 #  SOFTWARE.
 
 import rospy
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from std_msgs.msg import Time
 
 
 class Agreer:
     def __init__(self):
         rospy.Subscriber("time_coord", Time, self.check_time)
+        rospy.Subscriber("switch_found", Bool, self.ready_cb)
         self.comm_pub = rospy.Publisher("accept_feedback", String, queue_size=10)
+        self.running = False
+
+    def ready_cb(self, msg):
+        if msg.data:
+            self.running = True
 
     def check_time(self, msg):
         rospy.logdebug("Time received")
         print msg.data.secs
-        if rospy.get_time()+6 < msg.data.secs < rospy.get_time()+12:
+        if rospy.get_time() + 6 < msg.data.secs < rospy.get_time() + 12:
             self.comm_pub.publish("Accept")
             rospy.logdebug("Sleeping {}".format(msg.data.secs - rospy.get_time()))
 
             rospy.logdebug("Future time should be: {}".format(msg.data.secs))
             rospy.sleep(msg.data.secs - rospy.get_time())
             rospy.logdebug("Current time is: {}".format(rospy.get_time()))
-            rospy.loginfo("Executing maneuver")
+            rospy.logwarn("Executing maneuver")
+            self.running = False
         else:
             self.comm_pub.publish("Reject")
+
+    def run(self):
+        rate = rospy.Rate(2)
+        while not rospy.is_shutdown():
+            while self.running:
+                rate.sleep()
+            while not self.running:
+                rate.sleep()
+
+            self.comm_pub.publish("In Position")
 
 
 if __name__ == '__main__':
     rospy.init_node("agreer")
     agreer = Agreer()
-    rospy.sleep(1)
-    agreer.comm_pub.publish("In Position")  # One-off for this first test
-    rospy.spin()
+    agreer.run()
