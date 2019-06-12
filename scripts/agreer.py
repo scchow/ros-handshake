@@ -29,11 +29,11 @@ class Agreer:
         rospy.Subscriber("time_coord", Time, self.check_time)
         rospy.Subscriber("switch_found", Bool, self.ready_cb)
         self.comm_pub = rospy.Publisher("accept_feedback", String, queue_size=10)
-        self.running = False
+        self.ready = False
 
     def ready_cb(self, msg):
         if msg.data:
-            self.running = True
+            self.ready = True
 
     def check_time(self, msg):
         rospy.logdebug("Time received")
@@ -46,16 +46,17 @@ class Agreer:
             rospy.sleep(msg.data.secs - rospy.get_time())
             rospy.logdebug("Current time is: {}".format(rospy.get_time()))
             rospy.logwarn("Executing maneuver")
-            self.running = False
+            self.ready = False
         else:
             self.comm_pub.publish("Reject")
 
     def run(self):
-        rate = rospy.Rate(2)
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            while self.running:
+            # don't start again until reset
+            while self.ready:
                 rate.sleep()
-            while not self.running:
+            while not self.ready:
                 rate.sleep()
 
             self.comm_pub.publish("In Position")
